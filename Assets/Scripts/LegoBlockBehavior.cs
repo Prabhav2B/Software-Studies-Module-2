@@ -7,22 +7,24 @@ using UnityEngine;
 public class LegoBlockBehavior : MonoBehaviour
 {
     [SerializeField] private float blockHeight;
-    [SerializeField] private float divisionsX;
-    [SerializeField] private float divisionsZ;
+    [SerializeField] private int divisionsX;
+    [SerializeField] private int divisionsZ;
     public float BlockHeight => blockHeight;
 
     private Rigidbody _rb;
     private BoxCollider _collider;
+    private Bounds _bounds;
 
     private void Awake()
     {
         _rb = GetComponent<Rigidbody>();
         _collider = GetComponent<BoxCollider>();
+        _bounds = _collider.bounds;
     }
 
     private void OnEnable()
     {
-        _rb.isKinematic = false;
+        //_rb.isKinematic = false;
     }
 
     private void OnDisable()
@@ -30,44 +32,42 @@ public class LegoBlockBehavior : MonoBehaviour
         _rb.isKinematic = true;
     }
 
-    public List<Vector2> SectionPoints()
+    public List<Vector3> SectionPoints(Vector3 referencePosition, float yPos)
     {
-        var bounds = _collider.bounds;
-        var sectionLengthX = bounds.size.x / divisionsX;
-        var sectionLengthZ = bounds.size.y / divisionsZ;
+        var sectionLengthX = _bounds.size.x / divisionsX;
+        var sectionLengthZ = _bounds.size.z / divisionsZ;
 
-        var sections = new List<Vector2>();
+        var sections = new List<Vector3>();
         
-        for (int i = 0; i < divisionsX; i++)
+        for (int i = -(divisionsX-1) ; i < 2*divisionsX-1 ; i++)
         {
-            for (int j = 0; j < divisionsZ; j++)
+            for (int j = -(divisionsZ-1); j < 2*divisionsZ-1; j++)
             {
-                sections.Add(new Vector2(transform.position.x -bounds.size.x/2f  + i*sectionLengthX,
-                    transform.position.z - bounds.size.z/2f  + j*sectionLengthZ));
+                sections.Add(new Vector3(referencePosition.x + i*sectionLengthX,
+                    yPos,
+                    referencePosition.z + j*sectionLengthZ));
             }
         }
 
         return sections;
     }
 
-    private void OnDrawGizmos()
-    {
-        Gizmos.color = Color.white;
-        
-        var bounds = _collider.bounds;
-        var sectionLengthX = bounds.size.x / divisionsX;
-        var sectionLengthZ = bounds.size.z / divisionsZ;
-
-        var sections = new List<Vector2>();
-        
-        for (int i = 0; i < divisionsX; i++)
-        {
-            for (int j = 0; j < divisionsZ; j++)
-            {
-                Gizmos.DrawWireSphere(new Vector3(transform.position.x -bounds.size.x/2f  + i*sectionLengthX,
-                    transform.position.y + blockHeight/2f,
-                    transform.position.z - bounds.size.z/2f  + j*sectionLengthZ), .05f); 
-            }
-        }
-    }
+    // private void OnDrawGizmos()
+    // {
+    //     Gizmos.color = Color.green;
+    //     
+    //     var bounds = _collider.bounds;
+    //     var sectionLengthX = bounds.size.x / divisionsX;
+    //     var sectionLengthZ = bounds.size.z / divisionsZ;
+    //
+    //     for (int i = -(divisionsX-1) ; i < 2*divisionsX-1 ; i++)
+    //     {
+    //         for (int j = -(divisionsZ-1); j < 2*divisionsZ-1; j++)
+    //         {
+    //             Gizmos.DrawWireSphere(new Vector3(transform.position.x -bounds.size.x/2f  + i*sectionLengthX,
+    //                 transform.position.y,
+    //                 transform.position.z - bounds.size.z/2f  + j*sectionLengthZ), .05f); 
+    //         }
+    //     }
+    // }
 }

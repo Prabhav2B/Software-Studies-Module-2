@@ -83,9 +83,10 @@ public class LegoPlacement : MonoBehaviour
                     hitInfo.point.z);
 
             Collider closestCollider = null;
-            
+
             do
             {
+                
                 var intersectingBlockColliders = CheckBlockOverlaps(placementPosition);
                 if (intersectingBlockColliders.Length != 0)
                 {
@@ -97,12 +98,18 @@ public class LegoPlacement : MonoBehaviour
                 }
                 else
                 {
-                    _isSnapping = false;
                     break;
                 }
             } while (true);
 
-            _currentBlock.transform.position = _isSnapping ? SnapPosition(closestCollider, placementPosition) : placementPosition;
+            if (hitInfo.collider.gameObject.layer == LegoLayer)
+            {
+                _isSnapping = true;
+                closestCollider = hitInfo.collider;
+            }
+
+            _currentBlock.transform.position = _isSnapping ? SnapPosition(closestCollider.transform.position, placementPosition) : placementPosition;
+            _isSnapping = false;
         }
         else return;
 
@@ -113,10 +120,23 @@ public class LegoPlacement : MonoBehaviour
 
     }
 
-    private Vector3 SnapPosition(Collider closestCollider, Vector3 placementPosition)
+    private Vector3 SnapPosition(Vector3 referencePosition, Vector3 placementPosition)
     {
-        var legoBlock = closestCollider.GetComponent<LegoBlockBehavior>();
-        return Vector3.zero;
+        var sectionPositions = _currentLegoBlockBehavior.SectionPoints(referencePosition, placementPosition.y);
+        
+        var closestSection = sectionPositions[0];
+        var distanceB = Vector3.Distance (placementPosition, sectionPositions[0]);
+
+        foreach (var sectionPosition in sectionPositions)
+        {
+            var distanceA = Vector3.Distance (placementPosition, sectionPosition);
+
+            if (!(distanceA < distanceB)) continue;
+            closestSection = sectionPosition;
+            distanceB = distanceA;
+        }
+        
+        return closestSection;
     }
     
     private Collider FindClosestBlockCollider(Collider[] intersectingColliders)
