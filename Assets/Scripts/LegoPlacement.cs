@@ -1,11 +1,6 @@
-using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using Unity.VisualScripting;
-using UnityEditor.SceneManagement;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 public class LegoPlacement : MonoBehaviour
 {
@@ -20,8 +15,14 @@ public class LegoPlacement : MonoBehaviour
     private LegoBlockBehavior _currentLegoBlockBehavior;
     private List<Vector3> _extents;
     private Vector3 _maxExtents;
+    private bool _inputBuffer;
+    private bool _isSnapping;
+    
     
     private Camera _mainCam;
+
+    private const int GroundLayer = 6;
+    private const int LegoLayer = 7;
 
     private void Start()
     {
@@ -35,6 +36,8 @@ public class LegoPlacement : MonoBehaviour
 
         _extents = new List<Vector3>();
         PlaceholderBlockPreProcessing(_currentBlock);
+
+        _inputBuffer = false;
     }
 
     private void PlaceholderBlockPreProcessing(GameObject itemToProcess)
@@ -58,6 +61,12 @@ public class LegoPlacement : MonoBehaviour
         }
     }
 
+    private void Update()
+    {
+        if (!Input.GetKeyDown(KeyCode.Mouse0)) return;
+        _inputBuffer = true;
+    }
+
     private void FixedUpdate()
     {
         
@@ -67,28 +76,50 @@ public class LegoPlacement : MonoBehaviour
 
         RaycastHit hitInfo;
         Ray ray = _mainCam.ScreenPointToRay(Input.mousePosition);
-        if (Physics.Raycast(ray, out hitInfo, maxIntersectionDistance, 1<<intersectionCheckMask))
+        if (Physics.Raycast(ray, out hitInfo, maxIntersectionDistance, intersectionCheckMask))
         {
+            var placementPosition = new Vector3(hitInfo.point.x, 
+                    hitInfo.point.y + (_currentLegoBlockBehavior.BlockHeight/2f) , 
+                    hitInfo.point.z);
 
-            var intersectingColliders = CheckBlockOverlaps();
-            if (intersectingColliders.Length != 0)
+            Collider closestCollider = null;
+            
+            do
             {
-                var closestCollider = FindClosestCollider(intersectingColliders);
-            }
+                var intersectingBlockColliders = CheckBlockOverlaps(placementPosition);
+                if (intersectingBlockColliders.Length != 0)
+                {
+                    closestCollider = FindClosestBlockCollider(intersectingBlockColliders);
+                    placementPosition = new Vector3(placementPosition.x, 
+                        closestCollider.bounds.center.y + _currentLegoBlockBehavior.BlockHeight, 
+                        placementPosition.z);
+                    _isSnapping = true;
+                }
+                else
+                {
+                    _isSnapping = false;
+                    break;
+                }
+            } while (true);
 
-            _currentBlock.transform.position = new Vector3(hitInfo.point.x, 
-                hitInfo.point.y + (_currentLegoBlockBehavior.BlockHeight/2f) , 
-                hitInfo.point.z);
+            _currentBlock.transform.position = _isSnapping ? SnapPosition(closestCollider, placementPosition) : placementPosition;
         }
         else return;
 
-        if (Input.GetKeyDown(KeyCode.Mouse0))
-        {
-            Instantiate(legoBlockPrefab, _currentBlock.transform.position, Quaternion.identity);
-        }
+        if (!_inputBuffer) return;
+        
+        Instantiate(legoBlockPrefab, _currentBlock.transform.position, Quaternion.identity);
+        _inputBuffer = false;
+
     }
 
-    private Collider FindClosestCollider(Collider[] intersectingColliders)
+    private Vector3 SnapPosition(Collider closestCollider, Vector3 placementPosition)
+    {
+        var legoBlock = closestCollider.GetComponent<LegoBlockBehavior>();
+        return Vector3.zero;
+    }
+    
+    private Collider FindClosestBlockCollider(Collider[] intersectingColliders)
     {
         var currentObjectPos = _currentBlock.transform.position;
         
@@ -107,17 +138,16 @@ public class LegoPlacement : MonoBehaviour
                 distanceB = distanceA;
             }
         }
-
         return closestCollider;
     }
 
-    private Collider[] CheckBlockOverlaps()
+    private Collider[] CheckBlockOverlaps(Vector3 overlapBoxCentre)
     {
 
-        var hitColliders = Physics.OverlapBox(_currentBlock.transform.position,
-            _maxExtents,
-            Quaternion.identity, intersectionCheckMask);
-
+        var hitColliders = Physics.OverlapBox(overlapBoxCentre,
+            _maxExtents * 0.90f,
+            Quaternion.identity, 1<<LegoLayer);
+        
         return hitColliders;
     }
     

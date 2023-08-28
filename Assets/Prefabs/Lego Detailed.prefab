@@ -1027,6 +1027,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   blockHeight: 0.96
+  divisionsX: 4
+  divisionsZ: 2
 --- !u!1 &7478577849521987114
 GameObject:
   m_ObjectHideFlags: 0
